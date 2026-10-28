@@ -78,7 +78,7 @@ async function getTopListDetail(topListItem) {
     };
 }
 module.exports = {
-    // 【修改这里】：在插件名称结尾加上 lrc
+    // 保持你修改的插件名
     platform: "WebDAV lrc", 
     author: "猫头猫",
     description: "使用此插件前先配置用户变量",
@@ -101,7 +101,7 @@ module.exports = {
             name: "存放歌曲的路径",
         },
     ],
-    version: "0.0.2",
+    version: "0.0.3",
     supportedSearchType: ["music"],
     srcUrl: "https://gitee.com/maotoumao/MusicFreePlugins/raw/v0.1/dist/webdav/index.js",
     cacheControl: "no-cache",
@@ -119,17 +119,27 @@ module.exports = {
         const url = client.getFileDownloadLink(musicItem.id);
         let rawLrc = "";
 
+        // 尝试方案一：标准格式，把后缀替换为 .lrc (例如：周杰伦 - 那天下雨了.lrc)
         try {
-            const lrcId = musicItem.id.replace(/\.[^/.]+$/, ".lrc");
-            // 获取歌词文本内容
-            rawLrc = await client.getFileContents(lrcId, { format: "text" });
+            const lrcId1 = musicItem.id.replace(/\.[^/.]+$/, ".lrc");
+            rawLrc = await client.getFileContents(lrcId1, { format: "text" });
         } catch (e) {
-            // 静默失败，无本地歌词时自动回退
+            // 没找到标准的 .lrc，静默进入方案二
+        }
+
+        // 尝试方案二：如果方案一失败，尝试在原文件名后直接加 .lrc (例如：周杰伦 - 那天下雨了.mp3.lrc)
+        if (!rawLrc) {
+            try {
+                const lrcId2 = musicItem.id + ".lrc";
+                rawLrc = await client.getFileContents(lrcId2, { format: "text" });
+            } catch (e) {
+                // 都没找到，静默失败，自动回退到 MusicFree 的网络搜索
+            }
         }
 
         return {
             url: url,
-            // 【关键修正】: 将 lyric 改为 rawLrc
+            // 只要上面任意一个方案成功获取了文本，就会渲染出来
             rawLrc: rawLrc || undefined, 
         };
     },
